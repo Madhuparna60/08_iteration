@@ -1,6 +1,6 @@
 ---
 title: "Assignment 8 - Iteration"
-author: "YOUR NAME HERE"  
+author: "Madhuparna Deb"  
 format:
   html:
     code-fold: true 
@@ -40,6 +40,36 @@ The function inputs are:
 
 Once you create the function, make sure it works by applying it to one of the locations where K leaf concentration was collected.  
 
+```{r}
+#install.packages("dplyr")
+install.packages("readxl", repos = "https://cran.rstudio.com/")
+install.packages("purrr",  repos = "https://cran.rstudio.com/")
+install.packages("ggplot2", repos = "https://cran.rstudio.com/")
+
+library(readxl)           
+#library(dplyr)
+library(ggplot2)
+library(purrr)
+
+
+# Function to create boxplot
+soyk <- read_xlsx("../01_soybeans.xlsx")
+
+
+# Create the myplot function
+myplot <- function(df, x, y) {
+  ggplot(df, aes(x = as.factor(.data[[x]]), y = .data[[y]])) +
+    geom_boxplot(fill = "turquoise", color = "black") +
+    labs(x = x, y = y, title = paste("Boxplot for", y, "by", x)) +
+    theme_minimal()
+}
+
+# Apply the function to create a boxplot for 'Midville K pct' as a function of 'K rate (lbac)'
+myplot(soyk, 'K rate (lbac)', 'Macon K pct')
+
+```
+
+
 
 ## Q2 - Iterate over locations  
 On the step above you created a function to create boxplot for one location (one column in your original data set).  
@@ -47,6 +77,30 @@ On the step above you created a function to create boxplot for one location (one
 Now, you are asked to apply this function to each location in the data set.  
 For that, use one of the functions in the `map` family from the purr package.  
 When making your plots, make sure to add a title to represent which location is represented in each plot.  
+```{r}
+data <- soyk
+plot_location <- function(location) {
+  ggplot(data, aes(x = as.factor(`K rate (lbac)`), y = .data[[location]], fill = as.factor(TRT))) +
+    geom_boxplot() +
+    labs(title = paste("Boxplot for", location, "by K rate (lbac)"),
+         x = "K rate (lbac)",
+         y = "Potassium Percentage",
+         fill = "TRT") +
+    theme_minimal()
+}
+
+
+data_locations <- c("Tifton K pct", "Midville K pct", "Watkinsville K pct", "Macon K pct")
+
+
+plots <- map(data_locations, plot_location)
+
+
+print(plots)
+
+
+```
+
 
 # Submitting your work  
 Once you have developed all the code and answers, make sure to Render this quarto file.  
