@@ -99,18 +99,17 @@ where **nir** is reflectance from the near-infrared band, and **vis** is reflect
 One example of creating ndvi for the nir and red bands would be:  
 
 ```{r}
-nematode %>%
-  mutate(rndvi = (nir -r)/(nir + r)) %>%
-mutate(bndvi = (nir -r)/(nir + b)) %>%
-mutate(gndvi = (nir -r)/(nir + g)) 
+nematode %>% 
+  mutate(rndvi = (nir - r)/(nir +r))
 ```
 
 Since we're going to calculate this for each of the visible-region bands (5 in total), **let's write a function so we avoid some code repetition**.  
 
 ```{r ndvi function}
-ndvi <- function(nir, vis) {
-  (nir-vis)/(nir+vis)
-}
+nematode %>% 
+  mutate(rndvi = (nir - r)/(nir +r)) %>% 
+  mutate(bndvi = (nir - r)/(nir +r)) %>%
+  mutate(gndvi = (nir - r)/(nir +r)) 
 ```
 
 The **function name** is `ndvi`. 
@@ -125,20 +124,46 @@ Let's see how that would compare to the previous step:
 ```{r}
 nematode %>%
    mutate(rndvi = ndvi(nir, r))
-
 ```
+
+
+
+```{r}
+ndvi <- function(a,b) {
+  (nir - vis) + (nir + vis)
+}
+```
+```{r}
+ndvi <- function(nir,vis) {
+  (nir - vis) + (nir + vis)
+}
+
+```The **function name** is `ndvi`. 
+It takes 2 **arguments**:  
+  - nir: a vector with data on the near-infrared reflectance  
+  - vis: a vector with data on one of the visible bands reflectance
+
+The function **returns** a vector with the result of the ndvi calculation using the specific nir and visibile band information provided.  
+
+Let's see how that would compare to the previous step:
+```
+
+```{r}
+nematode %>% 
+  mutate(rndvi = ndvi(nir, r))
+```
+
 
 Now that we created a function to help with one type of vegetation index, let's go ahead and compute all 10 different ones.  
 
 ```{r}
-nematode_w <- nematode %>%
+nematode_w <- nematode %>% 
   # Calculating ndvi-based indices
   mutate(rndvi = ndvi(nir, r),
          gndvi = ndvi(nir, g),
          bndvi = ndvi(nir, b),
          rendvi = ndvi(nir, re)
-        ) %>%
-  
+         ) %>% 
 
   # Calculating other non-ndvi-based indices
   # For reference, see paper.
@@ -160,18 +185,17 @@ Let's write a function to return to us the mean and coefficient of variation. If
 First, a function for CV.  
 ```{r}
 meancv <- function(x) {
-   # Calculate intermediary steps of mean and sd
+  # Calculate intermediary steps of mean and sd
  mean <- mean(x, na.rm = T)
  sd <- sd(x, na.rm = T)
   # Calculate cv
-cv <- (sd/mean)*100
+ cv <- (sd/mean)*100
   # Combine them into a data frame
-df <- data.frame(mean = mean,
-                 cv = cv
-                 )
+ data.frame(mean = mean,
+                  cv = cv
+                  )
   # Return the data frame
-  df
-}  
+} 
 
 
 meancv
@@ -226,7 +250,7 @@ Loops are very useful when **repeating the same task across different scenarios*
 In this case, the **task being repeated is to calculate mean and CV**, and the **different scenarios are the columns**.  
 
 ```{r}
-nematode_w <- 
+nematode_w  
 ```
 
 Let's create a for loop to do that for us.  
@@ -245,20 +269,29 @@ nematode_meancv
 Each row above will be populated with the name of the variable, its mean and cv.  
 
 ```{r}
-for (i in 3:ncol(nematode_w)) {  # i = index position;3: starting column the "for" loop will consider
+nematode_w
+
+for (i in 3: ncol(nematode_w)) {
+
   # Getting the name of all columns
-colnames <- colnames(nematode_w)
+  colnames <- colnames(nematode_w)
+
   # Defining the name of the variable being analyzed in a given loop step
-varname <- colnames[i]
-  # Calculating mean and cv; double bracket will pull vector from a column
-statsum <- meancv(nematode_w[[i]]) 
+  varname <- colnames[i]
+
+  # Calculating mean and cv
+  statsum <- meancv(nematode_w[[i]])
+  # if we use [3] we get the whole column but with [[i]] we get the vector. so we use double beackets instead of single bracket
+
   # Appending results to the empty data frame  
-  nematode_meancv$variable[[i-2]] <- varname
-  nematode_meancv$mean[[i-2]] <- round(statsum$mean, 3)
-  nematode_meancv$cv[[i-2]] <- round(statsum$cv, 3)
+nematode_meancv$variable[[i-2]] <- varname
+nematode_meancv$mean[[i-2]] <- round(statsum$mean, 3)
+nematode_meancv$cv[[i-2]] <- round(statsum$cv,3)
   # Print a message
-  print(paste("Finished with variable", varname))
+print(paste("Finished with variable", varname))
+
 }
+
 ```
 
 Let's inspect `nematode_meancv`  
@@ -286,49 +319,43 @@ This approach creates a bit of a brain-twist, since we are creating data sets (a
 
 
 ```{r}
-nematode_mods <- nematode_w %>%
+nematode_mods <- nematode_w %>% 
   # Pivotting longer for the response variables
-pivot_longer(cols = mel_s:eggs_r,
-             names_to = "resp_var",
-             values_to = "resp_val"
-             ) %>%
+ pivot_longer(cols = mel_s:eggs_r,
+              names_to = "resp_var",
+              values_to = "resp_val"
+              ) %>% 
   # Pivotting longer for the explanatory variables  
-pivot_longer(cols = b:nli,
-             names_to = "exp_var",
-             values_to = "exp_val"
-             ) %>%
-  # Creating groups of resp_var and exp_var , the result after only nest only, you will see <tibble> which is the dataframe related to one combination of Resp~expl 
- group_by(resp_var, exp_var) %>%
-  nest()
+ pivot_longer(cols = b:nli,
+              names_to = "exp_var",
+              values_to = "exp_val"
+              ) %>% 
+  # Creating groups of resp_var and exp_var
+ group_by(resp_var, exp_var) %>% 
+ nest() %>% 
   # Applying linear model to each element
-
+ mutate(lm = map(data,
+               ~lm(data = .x,
+                   formula = resp_val ~ exp_val
+                   )
+                 )) %>% 
   # Extracting R2 for each element  
-
-nematode_mods
-str(nematode_mods$data)
-  # Applying linear model to each element
-mutate(lm = map(data,
-                ~lm(data = .x,
-                    formula = resp_val ~ exp_val
-                    )
-                )) %>%
-  # Extracting R2 for each element  
-mutate(r2 = map(lm,
-                summary(.x)$r.squared
-                ))%>%
+ mutate(r2 = map(lm,
+                 ~summary(.x)$r.squared
+                 ))
 
 
 nematode_mods$lm[1]
 
-
-
-
-
-
-ggplot(data = nematode_w,
+ggplot(data = nematode_w, 
        aes(y = mel_s, x = b)) +
-  geom_point()+
+  geom_point() + 
   geom_smooth(method = "lm")
+
+
+
+nematode_mods %>% 
+  arrange(resp_var, exp_var)
 
 ```
 Above we used the `map()` function because we only had one iterating element (i.e., data).  
@@ -349,40 +376,40 @@ nematode_mods_sel
 
 ```{r}
 
-nematode_mods_sel_plots  <- nematode_mods_sel %>%
-  mutate(splot = map(data,
-                     
+nematode_mods_sel_plots <- nematode_mods_sel %>% 
+  # Making scatterplots with r2 in subtitle
+ mutate(splot =  map2(data,r2,
                      
                      ~ggplot(data = .x,
-                             aes(x = exp_val
-                                 y = resp_val) 
-                             ) +
-                       geom_point()+
-                       geom_smooth(method = "lm") +
+                             aes(x = exp_val,
+                                 y = resp_val)
+                                 ) +
+                               geom_point()+
+                               geom_smooth(method = "lm") + 
                        labs(subtitle = paste("R2:", .y))
-                       
-                     )) %>%
-  # Making scatterplots with r2 in subtitle
-mutate(splot_better = pmap(list(.df = data,
-                                .r2 = r2,
-                                .rv = resp_var,
-                                .ev = exp_var
-                                ),
-                           function(.df, .r2, .rv, .ev)
-                           ggplot(data = .x,
-                             aes(x = exp_val
-                                 y = resp_val) 
-                             ) +
-                       geom_point()+
-                       geom_smooth(method = "lm") +
-                       labs(subtitle = paste("R2:", .r2),
-                            x = .ev,
+                     )) %>% 
+  # Making scatterplots with r2 in subtitle, and correct x and y axis titles 
+  mutate(splot_better = pmap(list(.df = data,
+                                  .r2 = r2,
+                                  .rv = resp_var,
+                                  .ev = exp_var
+                                  ), 
+                             function(.df, .r2, .rv, .ev)
+                               ggplot(data = .df,
+                             aes(x = exp_val,
+                                 y = resp_val)
+                                 ) +
+                               geom_point()+
+                               geom_smooth(method = "lm") + 
+                       labs(subtitle = paste("R2:", .r2), 
+                            x = .ev, 
                             y = .rv
                             )
-        
-                           ))
-  # Making scatterplots with r2 in subtitle, and correct x and y axis titles  
- 
+                             ))
+
+nematode_mods_sel$data[1]
+
+nematode_mods_sel_plots$splot[7]
 
 ```
 Now, we had 2 iterating elements to create `splot`, so we needed to use `map2()`.  
@@ -391,7 +418,8 @@ Also, with more than 2 iterating elements to create `splot_better`, we used the 
 
 Let's print the first plot:
 ```{r}
-nematode_mods_sel_plots$splot[7]
+nematode_mods_sel_plots$splot_better[1]
+
 ```
 
 Now, let's print all of the plots  
@@ -399,21 +427,22 @@ Now, let's print all of the plots
 #| warning: false
 #| message: false
 
-nematode_mods_sel_plots$splotbetter
+nematode_mods_sel_plots$splot_better
 ```
 
 Finally, let's save all these plots as one figure.  
 ```{r}
 library(gridExtra)
 
-allplots <- marrangeGrob(nematode_mods_sel_plots$splotbetter, 
-                         nrow = 4, 
-                         cols = 4
+allplots <- marrangeGrob(nematode_mods_sel_plots$splot_better,
+                         nrow =4,
+                         ncol =4
                          )
 
 allplots
- ggsave(plot = allplots,
-        "../Output/allplots.png")
+
+ggsave(plot = allplots,
+       "../output/allplots.png")
 
 ```
 
